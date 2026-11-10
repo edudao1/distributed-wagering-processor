@@ -1,0 +1,79 @@
+name: wagering
+
+x-app-environment: &app-environment
+  DATABASE_URL: postgres://wagering:wagering@postgres:5432/wagering
+  SQS_ENDPOINT: http://localstack:4566
+  AWS_REGION: us-east-1
+  AWS_ACCESS_KEY_ID: test
+  AWS_SECRET_ACCESS_KEY: test
+  LOG_LEVEL: info
+
+x-app: &app
+  build: .
+  restart: unless-stopped
+  depends_on:
+    migrate:
+      condition: service_completed_successfully
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: wagering
+      POSTGRES_PASSWORD: wagering
+      POSTGRES_DB: wagering
+    command: ["postgres", "-c", "max_connections=300"]
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wagering -d wagering"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  localstack:
+    image: localstack/localstack:3.8
+    environment:
+      SERVICES: sqs
+      SQS_ENDPOINT_STRATEGY: path
+    ports:
+      - "4566:4566"
+    healthcheck:
+      test: ["CMD", "awslocal", "sqs", "list-queues"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+
+  migrate:
+    build: .
+    command: ["sh", "-c", "bun run db:migrate && bun run sqs:setup"]
+    environment: *app-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+
+  app-1:
+    <<: *app
+    environment:
+      <<: *app-environment
+      INSTANCE_ID: app-1
+    ports:
+      - "3001:3000"
+
+  app-2:
+    <<: *app
+    environment:
+      <<: *app-environment
+      INSTANCE_ID: app-2
+    ports:
+      - "3002:3000"
+
+  app-3:
+    <<: *app
+    environment:
+      <<: *app-environment
+      INSTANCE_ID: app-3
+    ports:
+      - "3003:3000"

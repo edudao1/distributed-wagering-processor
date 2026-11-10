@@ -1,0 +1,10 @@
+export const UNIT_OF_WORK = Symbol("UNIT_OF_WORK");
+export const OUTBOX_STORE = Symbol("OUTBOX_STORE");
+export const EVENT_PUBLISHER = Symbol("EVENT_PUBLISHER");
+export const CLOCK = Symbol("CLOCK");
+export const ID_GENERATOR = Symbol("ID_GENERATOR");
+export const PAYLOAD_HASHER = Symbol("PAYLOAD_HASHER");
+export const LOGGER = Symbol("LOGGER");
+export const METRICS = Symbol("METRICS");
+export const REFERENCE_RETRY_POLICY = Symbol("REFERENCE_RETRY_POLICY");
+export const WAGER_TRANSACTION_HANDLER = Symbol("WAGER_TRANSACTION_HANDLER");

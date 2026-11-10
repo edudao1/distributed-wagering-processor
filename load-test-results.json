@@ -1,0 +1,33 @@
+{
+  "environment": {
+    "instances": 3,
+    "cpus": 12,
+    "cpuModel": "12th Gen Intel(R) Core(TM) i5-12400F",
+    "memoryGb": 31.8,
+    "bun": "1.4.4"
+  },
+  "methodology": {
+    "wallets": 50,
+    "requests": 5000,
+    "concurrency": 50,
+    "hotWalletShare": 0.2,
+    "duplicateShare": 0.05
+  },
+  "results": {
+    "elapsedSeconds": 26.67,
+    "throughputRps": 187.4,
+    "latencyMs": {
+      "p50": 45.13,
+      "p95": 1320.32,
+      "p99": 1838.14
+    },
+    "errorRate": 0,
+    "statusCounts": {
+      "200": 228,
+      "201": 4772
+    },
+    "lockConflicts": 0,
+    "duplicatesDetected": 228,
+    "outboxLagSecondsAtEnd": 9.655169
+  }
+}
