@@ -263,27 +263,29 @@ Não implementado com um IdP real para manter o escopo, mas o ponto de extensão
 
 No fim grava `load-test-results.json` com p50/p95/p99, throughput, taxa de erro, conflitos de lock (métrica), duplicatas detectadas e lag do outbox, junto com CPU/memória da máquina. A consistência é auditada depois, por SQL, em todas as carteiras.
 
-### Resultados (2026-11-10)
+### Resultados
 
 **Ambiente:** 3 instâncias (`docker compose up --build`), Postgres 16 e LocalStack 3.8 na mesma máquina — Intel Core i5-12400F (12 threads), 32 GB RAM, Windows 11 + Docker Desktop/WSL2, Bun 1.4.4.
 
-**Carga:** 5.000 requisições, 50 concorrentes, 50 carteiras, 20% numa carteira quente, 5% duplicatas.
+**Carga:** 5.000 requisições, 50 concorrentes, 50 carteiras, 20% numa carteira quente, 5% duplicatas. Duas rodadas com a mesma configuração, em dias diferentes; `load-test-results.json` guarda a mais recente.
 
-| Métrica | Valor |
-|---|---|
-| Duração | 26,7 s |
-| Throughput | 187 req/s |
-| Latência p50 | 45 ms |
-| Latência p95 | 1.320 ms |
-| Latência p99 | 1.838 ms |
-| Taxa de erro | 0% (4.772 × 201, 228 × 200 replay) |
-| Duplicatas detectadas | 228 (todas devolvidas como replay, nenhum débito duplo) |
-| Conflitos de lock (timeout/unique) | 0 |
-| Lag do outbox no fim da carga | 9,7 s (zerado logo depois: 9.654 eventos, 0 pendentes) |
+| Métrica | Rodada 1 (2026-11-10) | Rodada 2 (2026-11-11) |
+|---|---|---|
+| Duração | 26,7 s | 23,2 s |
+| Throughput | 187 req/s | 215 req/s |
+| Latência p50 | 45 ms | 37 ms |
+| Latência p95 | 1.320 ms | 1.336 ms |
+| Latência p99 | 1.838 ms | 1.605 ms |
+| Taxa de erro | 0% (4.772 × 201, 228 × 200 replay) | 0% (4.763 × 201, 237 × 200 replay) |
+| Duplicatas detectadas | 228 (todas replay, nenhum débito duplo) | 237 (todas replay, nenhum débito duplo) |
+| Conflitos de lock (timeout/unique) | 0 | 0 |
+| Lag do outbox no fim da carga | 9,7 s (zerado logo depois) | 8,9 s (zerado logo depois) |
 
-**Auditoria pós-carga (SQL em todas as 56 carteiras):** 0 divergências entre saldo e soma do ledger, 0 divergências entre saldo e último `balance_after`, 0 saldos negativos, 0 idempotency keys duplicadas.
+A diferença entre as rodadas está dentro do ruído de uma máquina compartilhada; o formato se repete: mediana baixa, cauda puxada pela carteira quente, nenhum erro.
 
-**Leitura dos números:** a mediana de 45 ms mostra o custo normal de uma transação (lock + 4 a 6 escritas + commit). A cauda (p95/p99 > 1 s) é a carteira quente: 20% de todo o tráfego disputa **uma única linha**, então essas requisições fazem fila no `FOR UPDATE` — é o comportamento esperado do lock pessimista (serializar em vez de falhar), e nenhuma delas estourou o `lock_timeout`. Carteiras normais não sofrem essa espera. O lag do outbox cresce durante o pico porque o publisher compete por conexões com o tráfego de escrita, e se recupera em segundos quando a carga cai.
+**Auditoria pós-carga (SQL em todas as carteiras do banco):** 0 divergências entre saldo e soma do ledger, 0 divergências entre saldo e último `balance_after`, 0 saldos negativos, 0 idempotency keys duplicadas, 0 eventos pendentes na outbox — 56 carteiras após a rodada 1 e 139 após a rodada 2 (o banco também tinha carteiras de testes e demonstrações).
+
+**Leitura dos números:** a mediana de 37–45 ms mostra o custo normal de uma transação (lock + 4 a 6 escritas + commit). A cauda (p95/p99 > 1 s) é a carteira quente: 20% de todo o tráfego disputa **uma única linha**, então essas requisições fazem fila no `FOR UPDATE` — é o comportamento esperado do lock pessimista (serializar em vez de falhar), e nenhuma delas estourou o `lock_timeout`. Carteiras normais não sofrem essa espera. O lag do outbox cresce durante o pico porque o publisher compete por conexões com o tráfego de escrita, e se recupera em segundos quando a carga cai.
 
 **Limitações da medição:** tudo roda numa única máquina (gerador de carga, 3 instâncias, banco e SQS emulado competem pela mesma CPU) via Docker Desktop no Windows, que adiciona overhead de virtualização e de rede. Os números servem para comparar mudanças e mostrar o comportamento sob contenção, não como capacidade de produção.
 
